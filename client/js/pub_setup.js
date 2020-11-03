@@ -41,6 +41,8 @@ actions = {
     },
     register_success: (username) => {
 
+
+        actions
     },
     register_fail: (username) => {
 
@@ -63,3 +65,5 @@ public_username_input.addEventListener("keydown", event => {
 
 public_ip_input.addEventListener("keydown", actions.ip_input_handler);
 public_server_submit.addEventListener("click", actions.ip_input_handler);
+
+public_faction_select.style.display = "none";

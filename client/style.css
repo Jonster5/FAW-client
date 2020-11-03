@@ -140,8 +140,42 @@ body {
     font-family: 'Trispace';
 }
 
-.public_server_popup_item_input #game_container {
+#game_container {
     width: 100%;
     height: 100%;
     background: url('images/seamless_space_bg.png');
+    display: flex;
+    flex-direction: column;
+    justify-content: space-evenly;
+}
+
+.UI_object {
+    background: white;
+    border-radius: 20px;
+}
+
+.game_window_container_div {
+    display: flex;
+    justify-content: space-evenly;
+    width: 100%;
+    height: 70%;
+    margin-top: 1vh;
+}
+
+#public_game_window {
+    width: 78%;
+    height: 100%;
+    background: grey;
+    border-radius: 20px;
+}
+
+#public_sidebar {
+    width: 18%;
+    height: 100%;
+}
+
+#public_bottombar {
+    width: 98%;
+    height: 25%;
+    margin: auto;
 }

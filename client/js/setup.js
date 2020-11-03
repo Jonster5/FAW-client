@@ -1,6 +1,6 @@
 join_game_button.addEventListener("click", event => {
     title_container.style.display = "none";
-    game_container.style.display = "block";
+    game_container.style.display = "flex";
     assets["js/pub_setup.js"].execute();
 });
 
