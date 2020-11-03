@@ -1,9 +1,17 @@
 actions = {
     ip_input_handler: (event) => {
-        if (event.keyCode === 13 || public_username_input.value && public_username_input.value) {
-            actions.ws_setup(public_ip_input.value);
-            public_ip_input.blur();
-            public_server_select.style.display = "none";
+        if (public_username_input.value && public_username_input.value) {
+            if (!event.keyCode) {
+                actions.ws_setup(public_ip_input.value);
+                public_ip_input.blur();
+                public_server_select.style.display = "none";
+            } else {
+                if (event.keyCode === 13) {
+                    actions.ws_setup(public_ip_input.value);
+                    public_ip_input.blur();
+                    public_server_select.style.display = "none";
+                }
+            }
         }
     },
     ws_setup: (ip) => {
