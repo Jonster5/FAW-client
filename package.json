@@ -1,0 +1,23 @@
+{
+    "name": "faw-client",
+    "version": "1.0.0",
+    "description": "Factions At War client",
+    "main": "index.js",
+    "scripts": {
+        "test": "echo \"Error: no test specified\" && exit 1",
+        "start": "node index.js"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/Jonster5/FAW-client.git"
+    },
+    "author": "Coin Hunter",
+    "license": "SEE LICENSE IN LICENSE",
+    "bugs": {
+        "url": "https://github.com/Jonster5/FAW-client/issues"
+    },
+    "homepage": "https://github.com/Jonster5/FAW-client#readme",
+    "dependencies": {
+        "express": "^4.17.1"
+    }
+}

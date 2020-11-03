@@ -1,0 +1,147 @@
+@import url('https://fonts.googleapis.com/css2?family=Black+Ops+One&family=Gugi&family=Trispace&display=swap');
+html,
+body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    font-family: sans-serif;
+    background: black;
+    color: white;
+}
+
+.container {
+    display: none;
+    width: 100%;
+    height: 100%;
+}
+
+
+/* Title Container */
+
+#title_container {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+
+.title {
+    font-family: 'Black Ops One', cursive;
+    font-size: 30px;
+    font-size: 10vw;
+    margin: 1.5vw;
+    user-select: none;
+}
+
+.title_button_container {
+    margin: auto 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    text-align: center;
+    width: 20vw;
+    margin: auto 0;
+}
+
+.title_button {
+    width: 20vw;
+    border: 5px white solid;
+    border-radius: 5px;
+    background: none;
+    font-family: 'Gugi', cursive;
+    font-size: 2vw;
+    padding: 20px;
+    margin: 10px;
+    transition-duration: 0.1s;
+    user-select: none;
+}
+
+.title_button:hover {
+    background: white;
+    color: black;
+    cursor: pointer;
+}
+
+.title_button:active {
+    background: grey;
+    border-color: grey;
+}
+
+
+/* popup bs */
+
+.UI_popup {
+    background: white;
+    position: fixed;
+    width: 60%;
+    height: 60%;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    border-radius: 5px;
+    display: flex;
+    flex-direction: column;
+    transition-duration: 0.1s;
+}
+
+
+/* Game container */
+
+.public_server_popup_div {
+    display: flex;
+    width: 100%;
+    height: 60%;
+}
+
+.public_server_submit {
+    width: 10vw;
+    height: 6vh;
+    margin: auto;
+    font-family: 'Trispace', sans-serif;
+    font-size: 2.5vw;
+    user-select: none;
+    color: #3268a8;
+    background: white;
+    border: 5px #3268a8 solid;
+    border-radius: 5px;
+    transition-duration: 0.1s;
+    text-align: center;
+}
+
+.public_server_submit:hover {
+    background: #3268a8;
+    color: white;
+    cursor: pointer;
+}
+
+.public_server_submit:active {
+    background: #275182;
+    border-color: #275182;
+}
+
+#public_server_select {
+    z-index: 10;
+}
+
+.public_server_popup_item {
+    margin: auto;
+}
+
+.public_server_popup_item_input {
+    width: 15vw;
+    text-align: center;
+    height: 16px;
+    font-size: 16px;
+    border: none;
+    border-bottom: 4px solid blue;
+    font-family: 'Trispace';
+}
+
+.public_server_popup_item_input #game_container {
+    width: 100%;
+    height: 100%;
+    background: url('images/seamless_space_bg.png');
+}
