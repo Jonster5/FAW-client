@@ -19,5 +19,6 @@
     "homepage": "https://github.com/Jonster5/FAW-client#readme",
     "dependencies": {
         "express": "^4.17.1"
-    }
+    },
+    "devDependencies": {}
 }

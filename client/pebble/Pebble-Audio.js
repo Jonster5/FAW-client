@@ -1,262 +1,261 @@
-//Create the audio context
-Pebble.actx = new AudioContext();
+// Create the audio context
+Pebble.actx = new AudioContext()
 
-//The sound object
+// The sound object
 class Sound {
-    constructor(source, loadHandler) {
+  constructor (source, loadHandler) {
+    // Assign the `source` and `loadHandler` values to this object
+    this.source = source
+    this.loadHandler = loadHandler
 
-        //Assign the `source` and `loadHandler` values to this object 
-        this.source = source;
-        this.loadHandler = loadHandler;
+    // Set the default properties
+    this.actx = Pebble.actx
+    this.volumeNode = this.actx.createGain()
+    this.panNode = this.actx.createStereoPanner()
+    this.convolverNode = this.actx.createConvolver()
+    this.delayNode = this.actx.createDelay()
+    this.feedbackNode = this.actx.createGain()
+    this.filterNode = this.actx.createBiquadFilter()
+    // this.panNode.panningModel = "equalpower";
+    this.soundNode = null
+    this.buffer = null
+    this.loop = false
+    this.playing = false
 
-        //Set the default properties
-        this.actx = Pebble.actx;
-        this.volumeNode = this.actx.createGain();
-        this.panNode = this.actx.createStereoPanner();
-        this.convolverNode = this.actx.createConvolver();
-        this.delayNode = this.actx.createDelay();
-        this.feedbackNode = this.actx.createGain();
-        this.filterNode = this.actx.createBiquadFilter();
-        //this.panNode.panningModel = "equalpower";
-        this.soundNode = null;
-        this.buffer = null;
-        this.loop = false;
-        this.playing = false;
+    // Values for the pan and volume getters/setters
+    this.panValue = 0
+    this.volumeValue = 1
 
-        //Values for the pan and volume getters/setters
-        this.panValue = 0;
-        this.volumeValue = 1;
+    // Values to help track and set the start and pause times
+    this.startTime = 0
+    this.startOffset = 0
 
-        //Values to help track and set the start and pause times
-        this.startTime = 0;
-        this.startOffset = 0;
+    // The playback rate
+    this.playbackRate = 1
+    this.randomPitch = true
 
-        //The playback rate
-        this.playbackRate = 1;
-        this.randomPitch = true;
+    // Reverb parameters
+    this.reverb = false
+    this.reverbImpulse = null
 
-        //Reverb parameters
-        this.reverb = false;
-        this.reverbImpulse = null;
+    // Echo parameters
+    this.echo = false
+    this.delayValue = 0.3
+    this.feebackValue = 0.3
+    this.filterValue = 0
 
-        //Echo parameters
-        this.echo = false;
-        this.delayValue = 0.3;
-        this.feebackValue = 0.3;
-        this.filterValue = 0;
+    // Load the sound
+    this.load()
+  }
 
-        //Load the sound
-        this.load();
-    }
+  // The sound object's methods
 
-    //The sound object's methods
+  load () {
+    // Use xhr to load the sound file
+    const xhr = new XMLHttpRequest()
+    xhr.open('GET', this.source, true)
+    xhr.responseType = 'arraybuffer'
+    xhr.addEventListener('load', () => {
+      // Decode the sound and store a reference to the buffer
+      this.actx.decodeAudioData(
+        xhr.response,
+        buffer => {
+          this.buffer = buffer
+          this.hasLoaded = true
 
-    load() {
-        //Use xhr to load the sound file
-        let xhr = new XMLHttpRequest();
-        xhr.open("GET", this.source, true);
-        xhr.responseType = "arraybuffer";
-        xhr.addEventListener("load", () => {
+          // This next bit is optional, but important.
+          // If you have a load manager in your game, call it here so that
+          // the sound is registered as having loaded.
+          if (this.loadHandler) {
+            this.loadHandler()
+          }
+        },
 
-            //Decode the sound and store a reference to the buffer 
-            this.actx.decodeAudioData(
-                xhr.response,
-                buffer => {
-                    this.buffer = buffer;
-                    this.hasLoaded = true;
-
-                    //This next bit is optional, but important.
-                    //If you have a load manager in your game, call it here so that
-                    //the sound is registered as having loaded. 
-                    if (this.loadHandler) {
-                        this.loadHandler();
-                    }
-                },
-
-                //Throw an error if the sound can't be decoded
-                error => {
-                    throw new Error("Audio could not be decoded: " + error);
-                }
-            );
-        });
-
-        //Send the request to load the file
-        xhr.send();
-    }
-
-    play() {
-        //Set the time to start the sound (immediately)
-        this.startTime = this.actx.currentTime;
-
-        //Create a sound node 
-        this.soundNode = this.actx.createBufferSource();
-
-        //Set the sound node's buffer property to the loaded sound
-        this.soundNode.buffer = this.buffer;
-
-        //Connect all the nodes
-        this.soundNode.connect(this.volumeNode);
-        //If there's no reverb, bypass the convolverNode
-        if (this.reverb === false) {
-            this.volumeNode.connect(this.panNode);
+        // Throw an error if the sound can't be decoded
+        error => {
+          throw new Error('Audio could not be decoded: ' + error)
         }
-        //If there is reverb, connect the `convolverNode` and apply
-        //the impulse response
-        else {
-            this.volumeNode.connect(this.convolverNode);
-            this.convolverNode.connect(this.panNode);
-            this.convolverNode.buffer = this.reverbImpulse;
-        }
-        this.panNode.connect(this.actx.destination);
+      )
+    })
 
-        //To create the echo effect, connect the volume to the 
-        //delay, the delay to the feedback, and the feedback to the
-        //destination
-        if (this.echo) {
-            this.feedbackNode.gain.value = this.feebackValue;
-            this.delayNode.delayTime.value = this.delayValue;
-            this.filterNode.frequency.value = this.filterValue;
-            this.delayNode.connect(this.feedbackNode);
-            if (this.filterValue > 0) {
-                this.feedbackNode.connect(this.filterNode);
-                this.filterNode.connect(this.delayNode);
-            } else {
-                this.feedbackNode.connect(this.delayNode);
-            }
-            this.volumeNode.connect(this.delayNode);
-            this.delayNode.connect(this.panNode);
-        }
+    // Send the request to load the file
+    xhr.send()
+  }
 
-        //Will the sound loop? This can be `true` or `false`
-        this.soundNode.loop = this.loop;
+  play () {
+    // Set the time to start the sound (immediately)
+    this.startTime = this.actx.currentTime
 
-        //Set the playback rate
-        this.soundNode.playbackRate.value = this.playbackRate;
+    // Create a sound node
+    this.soundNode = this.actx.createBufferSource()
 
-        //Finally, use the `start` method to play the sound.
-        //The start time will either be `currentTime`,
-        //or a later time if the sound was paused
-        this.soundNode.start(
-            this.startTime,
-            this.startOffset % this.buffer.duration
-        );
+    // Set the sound node's buffer property to the loaded sound
+    this.soundNode.buffer = this.buffer
 
-        //Set `playing` to `true` to help control the 
-        //`pause` and `restart` methods
-        this.playing = true;
+    // Connect all the nodes
+    this.soundNode.connect(this.volumeNode)
+    // If there's no reverb, bypass the convolverNode
+    if (this.reverb === false) {
+      this.volumeNode.connect(this.panNode)
+    }
+    // If there is reverb, connect the `convolverNode` and apply
+    // the impulse response
+    else {
+      this.volumeNode.connect(this.convolverNode)
+      this.convolverNode.connect(this.panNode)
+      this.convolverNode.buffer = this.reverbImpulse
+    }
+    this.panNode.connect(this.actx.destination)
 
+    // To create the echo effect, connect the volume to the
+    // delay, the delay to the feedback, and the feedback to the
+    // destination
+    if (this.echo) {
+      this.feedbackNode.gain.value = this.feebackValue
+      this.delayNode.delayTime.value = this.delayValue
+      this.filterNode.frequency.value = this.filterValue
+      this.delayNode.connect(this.feedbackNode)
+      if (this.filterValue > 0) {
+        this.feedbackNode.connect(this.filterNode)
+        this.filterNode.connect(this.delayNode)
+      } else {
+        this.feedbackNode.connect(this.delayNode)
+      }
+      this.volumeNode.connect(this.delayNode)
+      this.delayNode.connect(this.panNode)
     }
 
-    setReverb(duration = 2, decay = 2, reverse = false) {
-        this.reverbImpulse = impulseResponse(duration, decay, reverse);
-        this.reverb = true;
+    // Will the sound loop? This can be `true` or `false`
+    this.soundNode.loop = this.loop
+
+    // Set the playback rate
+    this.soundNode.playbackRate.value = this.playbackRate
+
+    // Finally, use the `start` method to play the sound.
+    // The start time will either be `currentTime`,
+    // or a later time if the sound was paused
+    this.soundNode.start(
+      this.startTime,
+      this.startOffset % this.buffer.duration
+    )
+
+    // Set `playing` to `true` to help control the
+    // `pause` and `restart` methods
+    this.playing = true
+  }
+
+  setReverb (duration = 2, decay = 2, reverse = false) {
+    this.reverbImpulse = impulseResponse(duration, decay, reverse)
+    this.reverb = true
+  }
+
+  setEcho (delayValue = 0.3, feedbackValue = 0.3, filterValue = 0) {
+    this.delayValue = delayValue
+    this.feebackValue = feedbackValue
+    this.filterValue = filterValue
+    this.echo = true
+  }
+
+  pause () {
+    // Pause the sound if it's playing, and calculate the
+    // `startOffset` to save the current position
+    if (this.playing) {
+      this.soundNode.stop(this.actx.currentTime)
+      this.startOffset += this.actx.currentTime - this.startTime
+      this.playing = false
+      return this.startOffset
+    }
+  }
+
+  restart () {
+    // Stop the sound if it's playing, reset the start and offset times,
+    // then call the `play` method again
+    if (this.playing) {
+      this.soundNode.stop(this.actx.currentTime)
+    }
+    this.startOffset = 0
+    this.startPoint = 0
+    this.endPoint = this.buffer.duration
+    this.play()
+  }
+
+  playFrom (value) {
+    if (this.playing) {
+      this.soundNode.stop(this.actx.currentTime)
+    }
+    this.startOffset = value
+    this.play()
+  }
+
+  // An experimental `playSection` method used to play a section of a
+  // sound
+  playSection (start, end) {
+    if (this.playing) {
+      this.soundNode.stop(this.actx.currentTime)
     }
 
-    setEcho(delayValue = 0.3, feedbackValue = 0.3, filterValue = 0) {
-        this.delayValue = delayValue;
-        this.feebackValue = feedbackValue;
-        this.filterValue = filterValue;
-        this.echo = true;
-    }
+    if (this.startOffset === 0) this.startOffset = start
 
-    pause() {
-        //Pause the sound if it's playing, and calculate the
-        //`startOffset` to save the current position 
-        if (this.playing) {
-            this.soundNode.stop(this.actx.currentTime);
-            this.startOffset += this.actx.currentTime - this.startTime;
-            this.playing = false;
-            return this.startOffset;
-        }
-    }
+    // Set the time to start the sound (immediately)
+    this.startTime = this.actx.currentTime
 
-    restart() {
-        //Stop the sound if it's playing, reset the start and offset times,
-        //then call the `play` method again
-        if (this.playing) {
-            this.soundNode.stop(this.actx.currentTime);
-        }
-        this.startOffset = 0;
-        this.startPoint = 0;
-        this.endPoint = this.buffer.duration;
-        this.play();
-    }
+    // Create a sound node
+    this.soundNode = this.actx.createBufferSource()
 
-    playFrom(value) {
-        if (this.playing) {
-            this.soundNode.stop(this.actx.currentTime);
-        }
-        this.startOffset = value;
-        this.play();
-    }
+    // Set the sound node's buffer property to the loaded sound
+    this.soundNode.buffer = this.buffer
 
-    //An experimental `playSection` method used to play a section of a
-    //sound
-    playSection(start, end) {
-        if (this.playing) {
-            this.soundNode.stop(this.actx.currentTime);
-        }
+    // Connect the sound to the pan, connect the pan to the
+    // volume, and connect the volume to the destination
+    this.soundNode.connect(this.panNode)
+    this.panNode.connect(this.volumeNode)
+    this.volumeNode.connect(this.actx.destination)
 
-        if (this.startOffset === 0) this.startOffset = start;
+    // Will the sound loop? This can be `true` or `false`
+    this.soundNode.loop = this.loop
+    this.soundNode.loopStart = start
+    this.soundNode.loopEnd = end
 
-        //Set the time to start the sound (immediately)
-        this.startTime = this.actx.currentTime;
+    // Find out what the duration of the sound is
+    const duration = end - start
 
-        //Create a sound node 
-        this.soundNode = this.actx.createBufferSource();
+    // Finally, use the `start` method to play the sound.
+    // The start time will either be `currentTime`,
+    // or a later time if the sound was paused
+    this.soundNode.start(
+      this.startTime,
+      this.startOffset % this.buffer.duration,
+      duration
+    )
 
-        //Set the sound node's buffer property to the loaded sound
-        this.soundNode.buffer = this.buffer;
+    // Set `playing` to `true` to help control the
+    // `pause` and `restart` methods
+    this.playing = true
+  }
 
-        //Connect the sound to the pan, connect the pan to the
-        //volume, and connect the volume to the destination
-        this.soundNode.connect(this.panNode);
-        this.panNode.connect(this.volumeNode);
-        this.volumeNode.connect(this.actx.destination);
+  // Volume and pan getters/setters
 
-        //Will the sound loop? This can be `true` or `false`
-        this.soundNode.loop = this.loop;
-        this.soundNode.loopStart = start;
-        this.soundNode.loopEnd = end;
+  get volume () {
+    return this.volumeValue
+  }
 
-        //Find out what the duration of the sound is
-        let duration = end - start;
+  set volume (value) {
+    this.volumeNode.gain.value = value
+    this.volumeValue = value
+  }
 
-        //Finally, use the `start` method to play the sound.
-        //The start time will either be `currentTime`,
-        //or a later time if the sound was paused
-        this.soundNode.start(
-            this.startTime,
-            this.startOffset % this.buffer.duration,
-            duration
-        );
+  get pan () {
+    return this.panNode.pan.value
+  }
 
-        //Set `playing` to `true` to help control the 
-        //`pause` and `restart` methods
-        this.playing = true;
-    }
-
-    //Volume and pan getters/setters
-
-    get volume() {
-        return this.volumeValue;
-    }
-    set volume(value) {
-        this.volumeNode.gain.value = value;
-        this.volumeValue = value;
-    }
-
-    get pan() {
-        return this.panNode.pan.value;
-    }
-    set pan(value) {
-        this.panNode.pan.value = value;
-    }
+  set pan (value) {
+    this.panNode.pan.value = value
+  }
 }
 
-//Create a high-level wrapper to keep our API consistent and flexible
-Pebble.Sound = function(source, loadHandler) {
-    return new Sound(source, loadHandler);
+// Create a high-level wrapper to keep our API consistent and flexible
+Pebble.Sound = function (source, loadHandler) {
+  return new Sound(source, loadHandler)
 }
 
 /*
@@ -279,7 +278,7 @@ of the parameters
       pitchBendAmount, //The number of Hz in which to bend the sound's pitch down
       reverse,         //If `reverse` is true the pitch will bend up
       randomValue,     //A range, in Hz, within which to randomize the pitch
-      dissonance,      //A value in Hz. Creates 2 additional dissonant frequencies 
+      dissonance,      //A value in Hz. Creates 2 additional dissonant frequencies
       echo,            //An array: [delayTime, feedbackTime, filterValue]
       reverb           //An array: [duration, decayRate, reverse?]
     );
@@ -307,287 +306,278 @@ Experiment by changing these parameters to see what kinds of effects you can cre
 your own library of custom sound effects for games.
 */
 
-Pebble.soundEffect = function(
-    frequencyValue,
-    attack = 0,
-    decay = 1,
-    type = "sine",
-    volumeValue = 1,
-    panValue = 0,
-    wait = 0,
-    pitchBendAmount = 0,
-    reverse = false,
-    randomValue = 0,
-    dissonance = 0,
-    echo = undefined,
-    reverb = undefined
+Pebble.soundEffect = function (
+  frequencyValue,
+  attack = 0,
+  decay = 1,
+  type = 'sine',
+  volumeValue = 1,
+  panValue = 0,
+  wait = 0,
+  pitchBendAmount = 0,
+  reverse = false,
+  randomValue = 0,
+  dissonance = 0,
+  echo = undefined,
+  reverb = undefined
 ) {
+  // Create oscillator, gain and pan nodes, and connect them
+  // together to the destination
+  const oscillator = Pebble.actx.createOscillator()
+  const volume = Pebble.actx.createGain()
+  const pan = Pebble.actx.createStereoPanner()
 
-    //Create oscillator, gain and pan nodes, and connect them
-    //together to the destination
-    let oscillator = Pebble.actx.createOscillator(),
-        volume = Pebble.actx.createGain(),
-        pan = Pebble.actx.createStereoPanner();
+  oscillator.connect(volume)
+  volume.connect(pan)
+  pan.connect(Pebble.actx.destination)
 
-    oscillator.connect(volume);
-    volume.connect(pan);
-    pan.connect(Pebble.actx.destination);
+  // Set the supplied values
+  volume.gain.value = volumeValue
+  pan.pan.value = panValue
+  oscillator.type = type
 
-    //Set the supplied values
-    volume.gain.value = volumeValue;
-    pan.pan.value = panValue;
-    oscillator.type = type;
+  // Optionally randomize the pitch. If the `randomValue` is greater
+  // than zero, a random pitch is selected that's within the range
+  // specified by `frequencyValue`. The random pitch will be either
+  // above or below the target frequency.
+  let frequency
+  const randomInt = (min, max) => {
+    return Math.floor(Math.random() * (max - min + 1)) + min
+  }
+  if (randomValue > 0) {
+    frequency = randomInt(
+      frequencyValue - randomValue / 2,
+      frequencyValue + randomValue / 2
+    )
+  } else {
+    frequency = frequencyValue
+  }
+  oscillator.frequency.value = frequency
 
-    //Optionally randomize the pitch. If the `randomValue` is greater
-    //than zero, a random pitch is selected that's within the range
-    //specified by `frequencyValue`. The random pitch will be either
-    //above or below the target frequency.
-    let frequency;
-    let randomInt = (min, max) => {
-        return Math.floor(Math.random() * (max - min + 1)) + min;
-    }
-    if (randomValue > 0) {
-        frequency = randomInt(
-            frequencyValue - randomValue / 2,
-            frequencyValue + randomValue / 2
-        );
+  // Apply effects
+  if (attack > 0) fadeIn(volume)
+  if (decay > 0) fadeOut(volume)
+  if (pitchBendAmount > 0) pitchBend(oscillator)
+  if (echo) addEcho(volume)
+  if (reverb) addReverb(volume)
+  if (dissonance > 0) addDissonance()
+
+  // Play the sound
+  play(oscillator)
+
+  // The helper functions:
+
+  // Reverb
+  function addReverb (volumeNode) {
+    const convolver = actx.createConvolver()
+    convolver.buffer = impulseResponse(reverb[0], reverb[1], reverb[2])
+    volumeNode.connect(convolver)
+    convolver.connect(pan)
+  }
+
+  // Echo
+  function addEcho (volumeNode) {
+    // Create the nodes
+    const feedback = Pebble.actx.createGain()
+    const delay = Pebble.actx.createDelay()
+    const filter = Pebble.actx.createBiquadFilter()
+
+    // Set their values (delay time, feedback time and filter frequency)
+    delay.delayTime.value = echo[0]
+    feedback.gain.value = echo[1]
+    if (echo[2]) filter.frequency.value = echo[2]
+
+    // Create the delay feedback loop, with
+    // optional filtering
+    delay.connect(feedback)
+    if (echo[2]) {
+      feedback.connect(filter)
+      filter.connect(delay)
     } else {
-        frequency = frequencyValue;
-    }
-    oscillator.frequency.value = frequency;
-
-    //Apply effects
-    if (attack > 0) fadeIn(volume);
-    if (decay > 0) fadeOut(volume);
-    if (pitchBendAmount > 0) pitchBend(oscillator);
-    if (echo) addEcho(volume);
-    if (reverb) addReverb(volume);
-    if (dissonance > 0) addDissonance();
-
-    //Play the sound
-    play(oscillator);
-
-    //The helper functions:
-
-    //Reverb
-    function addReverb(volumeNode) {
-        let convolver = actx.createConvolver();
-        convolver.buffer = impulseResponse(reverb[0], reverb[1], reverb[2]);
-        volumeNode.connect(convolver);
-        convolver.connect(pan);
+      feedback.connect(delay)
     }
 
-    //Echo
-    function addEcho(volumeNode) {
+    // Connect the delay loop to the oscillator's volume
+    // node, and then to the destination
+    volumeNode.connect(delay)
 
-        //Create the nodes
-        let feedback = Pebble.actx.createGain(),
-            delay = Pebble.actx.createDelay(),
-            filter = Pebble.actx.createBiquadFilter();
+    // Connect the delay loop to the main sound chain's
+    // pan node, so that the echo effect is directed to
+    // the correct speaker
+    delay.connect(pan)
+  }
 
-        //Set their values (delay time, feedback time and filter frequency)
-        delay.delayTime.value = echo[0];
-        feedback.gain.value = echo[1];
-        if (echo[2]) filter.frequency.value = echo[2];
+  // Fade in (the sound’s “attack”)
+  function fadeIn (volumeNode) {
+    // Set the volume to 0 so that you can fade in from silence
+    volumeNode.gain.value = 0
 
-        //Create the delay feedback loop, with
-        //optional filtering
-        delay.connect(feedback);
-        if (echo[2]) {
-            feedback.connect(filter);
-            filter.connect(delay);
-        } else {
-            feedback.connect(delay);
-        }
+    volumeNode.gain.linearRampToValueAtTime(
+      0, Pebble.actx.currentTime + wait
+    )
+    volumeNode.gain.linearRampToValueAtTime(
+      volumeValue, Pebble.actx.currentTime + wait + attack
+    )
+  }
 
-        //Connect the delay loop to the oscillator's volume
-        //node, and then to the destination
-        volumeNode.connect(delay);
+  // Fade out (the sound’s “decay”)
+  function fadeOut (volumeNode) {
+    volumeNode.gain.linearRampToValueAtTime(
+      volumeValue, Pebble.actx.currentTime + attack + wait
+    )
+    volumeNode.gain.linearRampToValueAtTime(
+      0, Pebble.actx.currentTime + wait + attack + decay
+    )
+  }
 
-        //Connect the delay loop to the main sound chain's
-        //pan node, so that the echo effect is directed to
-        //the correct speaker
-        delay.connect(pan);
+  // Pitch bend.
+  // Uses `linearRampToValueAtTime` to bend the sound’s frequency up or down
+  function pitchBend (oscillatorNode) {
+    // Get the frequency of the current oscillator
+    const frequency = oscillatorNode.frequency.value
+
+    // If `reverse` is true, make the sound drop in pitch.
+    // (Useful for shooting sounds)
+    if (!reverse) {
+      oscillatorNode.frequency.linearRampToValueAtTime(
+        frequency,
+        Pebble.actx.currentTime + wait
+      )
+      oscillatorNode.frequency.linearRampToValueAtTime(
+        frequency - pitchBendAmount,
+        Pebble.actx.currentTime + wait + attack + decay
+      )
     }
 
-    //Fade in (the sound’s “attack”)
-    function fadeIn(volumeNode) {
+    // If `reverse` is false, make the note rise in pitch.
+    // (Useful for jumping sounds)
+    else {
+      oscillatorNode.frequency.linearRampToValueAtTime(
+        frequency,
+        Pebble.actx.currentTime + wait
+      )
+      oscillatorNode.frequency.linearRampToValueAtTime(
+        frequency + pitchBendAmount,
+        Pebble.actx.currentTime + wait + attack + decay
+      )
+    }
+  }
 
-        //Set the volume to 0 so that you can fade in from silence
-        volumeNode.gain.value = 0;
+  // Dissonance
+  function addDissonance () {
+    // Create two more oscillators and gain nodes
+    const d1 = Pebble.actx.createOscillator()
+    const d2 = Pebble.actx.createOscillator()
+    const d1Volume = Pebble.actx.createGain()
+    const d2Volume = Pebble.actx.createGain()
 
-        volumeNode.gain.linearRampToValueAtTime(
-            0, Pebble.actx.currentTime + wait
-        );
-        volumeNode.gain.linearRampToValueAtTime(
-            volumeValue, Pebble.actx.currentTime + wait + attack
-        );
+    // Set the volume to the `volumeValue`
+    d1Volume.gain.value = volumeValue
+    d2Volume.gain.value = volumeValue
+
+    // Connect the oscillators to the gain and destination nodes
+    d1.connect(d1Volume)
+    d1Volume.connect(Pebble.actx.destination)
+    d2.connect(d2Volume)
+    d2Volume.connect(Pebble.actx.destination)
+
+    // Set the waveform to "sawtooth" for a harsh effect
+    d1.type = 'sawtooth'
+    d2.type = 'sawtooth'
+
+    // Make the two oscillators play at frequencies above and
+    // below the main sound's frequency. Use whatever value was
+    // supplied by the `dissonance` argument
+    d1.frequency.value = frequency + dissonance
+    d2.frequency.value = frequency - dissonance
+
+    // Apply effects to the gain and oscillator
+    // nodes to match the effects on the main sound
+    if (attack > 0) {
+      fadeIn(d1Volume)
+      fadeIn(d2Volume)
+    }
+    if (decay > 0) {
+      fadeOut(d1Volume)
+      fadeOut(d2Volume)
+    }
+    if (pitchBendAmount > 0) {
+      pitchBend(d1)
+      pitchBend(d2)
+    }
+    if (echo) {
+      addEcho(d1Volume)
+      addEcho(d2Volume)
+    }
+    if (reverb) {
+      addReverb(d1Volume)
+      addReverb(d2Volume)
     }
 
-    //Fade out (the sound’s “decay”)
-    function fadeOut(volumeNode) {
-        volumeNode.gain.linearRampToValueAtTime(
-            volumeValue, Pebble.actx.currentTime + attack + wait
-        );
-        volumeNode.gain.linearRampToValueAtTime(
-            0, Pebble.actx.currentTime + wait + attack + decay
-        );
-    }
+    // Play the sounds
+    play(d1)
+    play(d2)
+  }
 
-    //Pitch bend.
-    //Uses `linearRampToValueAtTime` to bend the sound’s frequency up or down
-    function pitchBend(oscillatorNode) {
-
-        //Get the frequency of the current oscillator
-        let frequency = oscillatorNode.frequency.value;
-
-        //If `reverse` is true, make the sound drop in pitch.
-        //(Useful for shooting sounds)
-        if (!reverse) {
-            oscillatorNode.frequency.linearRampToValueAtTime(
-                frequency,
-                Pebble.actx.currentTime + wait
-            );
-            oscillatorNode.frequency.linearRampToValueAtTime(
-                frequency - pitchBendAmount,
-                Pebble.actx.currentTime + wait + attack + decay
-            );
-        }
-
-        //If `reverse` is false, make the note rise in pitch. 
-        //(Useful for jumping sounds)
-        else {
-            oscillatorNode.frequency.linearRampToValueAtTime(
-                frequency,
-                Pebble.actx.currentTime + wait
-            );
-            oscillatorNode.frequency.linearRampToValueAtTime(
-                frequency + pitchBendAmount,
-                Pebble.actx.currentTime + wait + attack + decay
-            );
-        }
-    }
-
-    //Dissonance
-    function addDissonance() {
-
-        //Create two more oscillators and gain nodes
-        let d1 = Pebble.actx.createOscillator(),
-            d2 = Pebble.actx.createOscillator(),
-            d1Volume = Pebble.actx.createGain(),
-            d2Volume = Pebble.actx.createGain();
-
-        //Set the volume to the `volumeValue`
-        d1Volume.gain.value = volumeValue;
-        d2Volume.gain.value = volumeValue;
-
-        //Connect the oscillators to the gain and destination nodes
-        d1.connect(d1Volume);
-        d1Volume.connect(Pebble.actx.destination);
-        d2.connect(d2Volume);
-        d2Volume.connect(Pebble.actx.destination);
-
-        //Set the waveform to "sawtooth" for a harsh effect
-        d1.type = "sawtooth";
-        d2.type = "sawtooth";
-
-        //Make the two oscillators play at frequencies above and
-        //below the main sound's frequency. Use whatever value was
-        //supplied by the `dissonance` argument
-        d1.frequency.value = frequency + dissonance;
-        d2.frequency.value = frequency - dissonance;
-
-        //Apply effects to the gain and oscillator
-        //nodes to match the effects on the main sound
-        if (attack > 0) {
-            fadeIn(d1Volume);
-            fadeIn(d2Volume);
-        }
-        if (decay > 0) {
-            fadeOut(d1Volume);
-            fadeOut(d2Volume);
-        }
-        if (pitchBendAmount > 0) {
-            pitchBend(d1);
-            pitchBend(d2);
-        }
-        if (echo) {
-            addEcho(d1Volume);
-            addEcho(d2Volume);
-        }
-        if (reverb) {
-            addReverb(d1Volume);
-            addReverb(d2Volume);
-        }
-
-        //Play the sounds
-        play(d1);
-        play(d2);
-    }
-
-    //The `play` function that starts the oscillators
-    function play(oscillatorNode) {
-        oscillatorNode.start(Pebble.actx.currentTime + wait);
-    }
+  // The `play` function that starts the oscillators
+  function play (oscillatorNode) {
+    oscillatorNode.start(Pebble.actx.currentTime + wait)
+  }
 }
 
+// `impulseResponse` is a function that uses a convolver node to create
+// a dynamic reverb effect
+// based on "Simple-Reverb": github.com/web-audio-components/simple-reverb
+function impulseResponse (duration = 2, decay = 2, reverse = false) {
+  // The length of the reverb effect will be the audio context's
+  // `sampleRate` (the sound resolution) multiplied by the supplied duration
+  const length = Pebble.actx.sampleRate * duration
 
+  // Create an audio buffer (an empty sound container) to store the
+  // reverb effect. The audio context's `createBuffer` method lets you
+  // do this. It creates a space in memory to store all the sound data in
+  // "sample frame" units. It takes three arguments:
+  // 1. numberOfChannels: 2, for right and left speakers (maximum is 32)
+  // bufferSize: the size of the buffer in sample frames
+  // sampleRate: the resolution of the sound
+  const impulse = actx.createBuffer(2, length, Pebble.actx.sampleRate)
 
+  // Use `getChannelData` to initialize empty arrays to store sound data for
+  // the left and right channels. The left channel is `0`, the right
+  // channel is `1`
+  const left = impulse.getChannelData(0)
+  const right = impulse.getChannelData(1)
 
-//`impulseResponse` is a function that uses a convolver node to create
-//a dynamic reverb effect
-//based on "Simple-Reverb": github.com/web-audio-components/simple-reverb
-function impulseResponse(duration = 2, decay = 2, reverse = false) {
+  // Fill each channel data array element with random white noise that decays
+  // logarithmically (a natural sounding proportionate way).
+  // This noise will be used by the convolver node to
+  // create the reverb effect
 
-    //The length of the reverb effect will be the audio context's
-    //`sampleRate` (the sound resolution) multiplied by the supplied duration
-    let length = Pebble.actx.sampleRate * duration;
-
-    //Create an audio buffer (an empty sound container) to store the 
-    //reverb effect. The audio context's `createBuffer` method lets you
-    //do this. It creates a space in memory to store all the sound data in 
-    //"sample frame" units. It takes three arguments: 
-    //1. numberOfChannels: 2, for right and left speakers (maximum is 32) 
-    //bufferSize: the size of the buffer in sample frames 
-    //sampleRate: the resolution of the sound
-    let impulse = actx.createBuffer(2, length, Pebble.actx.sampleRate);
-
-    //Use `getChannelData` to initialize empty arrays to store sound data for
-    //the left and right channels. The left channel is `0`, the right
-    //channel is `1`
-    let left = impulse.getChannelData(0),
-        right = impulse.getChannelData(1);
-
-    //Fill each channel data array element with random white noise that decays
-    //logarithmically (a natural sounding proportionate way). 
-    //This noise will be used by the convolver node to
-    //create the reverb effect
-
-    //Loop through each sample-frame and fill the channel
-    //data with random noise
-    for (let i = 0; i < length; i++) {
-        //Apply the reverse effect, if `reverse` is `true`
-        let n;
-        if (reverse) {
-            n = length - i;
-        } else {
-            n = i;
-        }
-        //Fill the left and right channels with random white noise which
-        //decays exponentially
-        left[i] = (Math.random() * 2 - 1) * Math.pow(1 - n / length, decay);
-        right[i] = (Math.random() * 2 - 1) * Math.pow(1 - n / length, decay);
+  // Loop through each sample-frame and fill the channel
+  // data with random noise
+  for (let i = 0; i < length; i++) {
+    // Apply the reverse effect, if `reverse` is `true`
+    let n
+    if (reverse) {
+      n = length - i
+    } else {
+      n = i
     }
-    return impulse;
+    // Fill the left and right channels with random white noise which
+    // decays exponentially
+    left[i] = (Math.random() * 2 - 1) * Math.pow(1 - n / length, decay)
+    right[i] = (Math.random() * 2 - 1) * Math.pow(1 - n / length, decay)
+  }
+  return impulse
 }
 
 Pebble.sounds = {
-    laserShot: (vol = 1) => Pebble.soundEffect(1046.5, 0, 0.3, "sawtooth", vol, 0, 0, 1200, false, 0, 25, [0.2, 0.2, 2000], undefined),
-    jump: (vol = 3) => Pebble.soundEffect(423.25, 0.05, 0.2, "sine", vol, 0, 0, 600, true, 100, 0, undefined, undefined),
-    explosion: (vol = 1) => Pebble.soundEffect(16, 0, 1, "sawtooth", vol, 0, 0, 0, false, 0, 50, undefined, undefined),
-    bonus: (vol = 1) => {
-        Pebble.soundEffect(587.33, 0, 0.2, "square", vol, 0, 0);
-        Pebble.soundEffect(880, 0, 0.2, "square", vol, 0, 0.1);
-        Pebble.soundEffect(1174.66, 0, 0.3, "square", vol, 0, 0.2);
-    },
-};
+  laserShot: (vol = 1) => Pebble.soundEffect(1046.5, 0, 0.3, 'sawtooth', vol, 0, 0, 1200, false, 0, 25, [0.2, 0.2, 2000], undefined),
+  jump: (vol = 3) => Pebble.soundEffect(423.25, 0.05, 0.2, 'sine', vol, 0, 0, 600, true, 100, 0, undefined, undefined),
+  explosion: (vol = 1) => Pebble.soundEffect(16, 0, 1, 'sawtooth', vol, 0, 0, 0, false, 0, 50, undefined, undefined),
+  bonus: (vol = 1) => {
+    Pebble.soundEffect(587.33, 0, 0.2, 'square', vol, 0, 0)
+    Pebble.soundEffect(880, 0, 0.2, 'square', vol, 0, 0.1)
+    Pebble.soundEffect(1174.66, 0, 0.3, 'square', vol, 0, 0.2)
+  }
+}

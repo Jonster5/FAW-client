@@ -39,10 +39,12 @@
         <div class="UI_popup" id="public_server_select">
             <div class="public_server_popup_div">
                 <div class="public_server_popup_item">
-                    <input id="public_username_input" class="public_server_popup_item_input" type="text" placeholder="Enter Username" />
+                    <input id="public_username_input" class="public_server_popup_item_input" type="text" maxlength="15" placeholder="Enter Username" />
+                    <div id="public_username_input_failtext">m</div>
                 </div>
                 <div class="public_server_popup_item">
                     <input id="public_ip_input" class="public_server_popup_item_input" type="text" placeholder="Enter Server IP" />
+                    <div style="visibility: hidden; user-select: none; font-size: 1vw; font-family: 'Gugi', cursive;">m</div>
                 </div>
             </div>
             <div class="public_server_submit" id="public_server_submit">Join</div>
@@ -57,7 +59,9 @@
         </div>
         <div class="game_window_container_div">
             <div class="game_window" id="public_game_window"></div>
-            <div class="UI_object" id="public_sidebar"></div>
+            <div class="UI_object" id="public_sidebar">
+                <div class="sidebar_object" id="public_sidebar_username"></div>
+            </div>
         </div>
         <div class="UI_object" id="public_bottombar"></div>
     </div>

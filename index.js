@@ -1,8 +1,8 @@
-const express = require('express');
-let port = process.env.PORT || 3000;
+const express = require('express')
+const port = process.env.PORT || 3000
 
-let app = express();
+const app = express()
 
-app.use(express.static('client'));
+app.use(express.static('client'))
 
-app.listen(port);
+app.listen(port)
