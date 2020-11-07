@@ -45,7 +45,7 @@ actions = {
 
         actions.ws.onmessage = (message) => {
             let data = JSON.parse(message.data);
-
+            console.log(data);
             actions[data.frontend](...data.frontend_params);
         };
     },
@@ -63,6 +63,9 @@ actions = {
     },
     render_map: () => {
 
+    },
+    test: (yes) => {
+        console.table(yes);
     }
 
 };
